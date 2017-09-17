@@ -166,6 +166,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		// transformed and stored in the transformation_observations vector.
 		// Time to recalculate weight.
 		
+		particles[i].weight = 1.0;
+
 		for (unsigned int j = 0; j < transformed_observations.size(); j++) {
 			// Loop through all predictions to find the x and y of the observed.
 			double prediction_x, prediction_y;
@@ -178,7 +180,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 
 			// New weight from multivariate Gaussian - this looks better on paper.
-			particles[i].weight = (1/(2 * M_PI * std_landmark[0] * std_landmark[1])) * exp(-(pow(prediction_x - transformed_observations[j].x, 2)/(2 * pow(std_landmark[0], 2)) + (pow(prediction_y - transformed_observations[j].y, 2)/(2 * pow(std_landmark[1], 2)))));
+			particles[i].weight *= (1/(2 * M_PI * std_landmark[0] * std_landmark[1])) * exp(-(pow(prediction_x - transformed_observations[j].x, 2)/(2 * pow(std_landmark[0], 2)) + (pow(prediction_y - transformed_observations[j].y, 2)/(2 * pow(std_landmark[1], 2)))));
 		}
 	}
 }
@@ -191,7 +193,6 @@ void ParticleFilter::resample() {
 	// Vectors for particle and weight storage + max weight initialization
 	vector<Particle> new_particles;
 	vector<double> weights;
-	double maximum_weight = 0;
 	double beta = 0.0;
 
 	// Pull all weights
@@ -200,19 +201,14 @@ void ParticleFilter::resample() {
 	}
 
 	// Time to get the maximium weight
-	for (std::vector<Particle>::const_iterator particle = particles.begin(); particle != particles.end(); ++particle)
-	{
-		if (particle->weight > maximum_weight) {
-			maximum_weight = particle->weight;
-		}
-	}
+	double maximum_weight = *max_element(weights.begin(), weights.end());
 
 	// Distribution initialization
 	uniform_int_distribution<int> int_distribution(0, particles.size() - 1);
 	uniform_real_distribution<double> real_distribution(0.0, 2 * maximum_weight);
 	auto index = int_distribution(generator);
 
-	// spin the resample wheel!
+	// Spin the resample wheel!
 	for (int i = 0; i < particles.size(); i++) {
 		beta += real_distribution(generator);
 
